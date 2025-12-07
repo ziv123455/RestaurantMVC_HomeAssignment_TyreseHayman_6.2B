@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using System.Security.Claims
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -12,20 +14,88 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">RestaurantMVC</a>
+                <a class="navbar-brand"
+                   asp-area=""
+                   asp-controller="Catalog"
+                   asp-action="Index"
+                   asp-route-type="restaurants"
+                   asp-route-view="card"
+                   asp-route-mode="view">
+                    RestaurantMVC
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @{
+                        var isLoggedIn = User.Identity?.IsAuthenticated ?? false;
+                        var isAdmin = false;
+
+                        if (isLoggedIn)
+                        {
+                            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity.Name;
+                            if (!string.IsNullOrEmpty(email) &&
+                            string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
+                            {
+                                isAdmin = true;
+                            }
+                        }
+                    }
+
                     <ul class="navbar-nav flex-grow-1">
+                        <!-- Catalog: visible to everyone (anonymous + logged in) -->
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark"
+                               asp-area=""
+                               asp-controller="Catalog"
+                               asp-action="Index"
+                               asp-route-type="restaurants"
+                               asp-route-view="card"
+                               asp-route-mode="view">
+                                Catalog
+                            </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+
+                        @* Logged-in users: Check Request only *@
+                        @if (isLoggedIn)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Requests"
+                                   asp-action="Index">
+                                    Check Request
+                                </a>
+                            </li>
+                        }
+
+                        @* Admin-only: Bulk Import + Verification *@
+                        @if (isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="BulkImport"
+                                   asp-action="BulkImport">
+                                    Bulk Import
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Catalog"
+                                   asp-action="Index"
+                                   asp-route-type="restaurants"
+                                   asp-route-view="card"
+                                   asp-route-mode="approve">
+                                    Verification
+                                </a>
+                            </li>
+                        }
                     </ul>
+
                     <partial name="_LoginPartial" />
                 </div>
             </div>
@@ -39,7 +109,7 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2025 - RestaurantMVC - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2025 - RestaurantMVC
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

@@ -1,0 +1,35 @@
+﻿@using System.Security.Claims
+@model Domain.Models.MenuItem
+
+@{
+    // is current user the site admin?
+    var isAdmin = false;
+    if (User.Identity?.IsAuthenticated ?? false)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity.Name;
+        if (!string.IsNullOrEmpty(email) &&
+            string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
+        {
+            isAdmin = true;
+        }
+    }
+}
+
+<div class="card p-2">
+    @if (!string.IsNullOrEmpty(Model.ImagePath))
+    {
+        <img src="@Model.ImagePath"
+             alt="@Model.Title"
+             class="img-fluid mb-2" />
+    }
+
+    <strong>@Model.Title</strong><br />
+    Price: @Model.Price<br />
+    Restaurant: @Model.Restaurant?.Name<br />
+
+    @* Only admin sees status *@
+    @if (isAdmin)
+    {
+        <span>Status: @Model.Status</span>
+    }
+</div>

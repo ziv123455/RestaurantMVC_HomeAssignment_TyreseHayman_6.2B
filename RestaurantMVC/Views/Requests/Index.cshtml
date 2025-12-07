@@ -1,0 +1,40 @@
+﻿@model IEnumerable<Domain.Models.Restaurant>
+
+@{
+    ViewData["Title"] = "My Requests";
+}
+
+<h2>My Restaurant Requests</h2>
+
+@if (!Model.Any())
+{
+    <p>You have not submitted any restaurants yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Owner Email</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.Name</td>
+                    <td>@r.OwnerEmailAddress</td>
+                    <td>@r.Status</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,0 +1,45 @@
+﻿@model Domain.Models.Restaurant
+@using Domain.Models
+
+@{
+    ViewData["Title"] = "Request Details";
+
+    var menuItems = ViewBag.MenuItems as IEnumerable<MenuItem> ?? Enumerable.Empty<MenuItem>();
+}
+
+<h2>Restaurant Details</h2>
+
+<div class="card p-3 mb-3">
+    <h4>@Model.Name</h4>
+    <p><strong>Owner:</strong> @Model.OwnerEmailAddress</p>
+    <p><strong>Status:</strong> @Model.Status</p>
+</div>
+
+<h3>Menu Items</h3>
+
+@if (!menuItems.Any())
+{
+    <p>No menu items for this restaurant yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Price</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in menuItems)
+            {
+                <tr>
+                    <td>@m.Title</td>
+                    <td>@m.Price</td>
+                    <td>@m.Status</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

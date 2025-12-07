@@ -1,0 +1,44 @@
+﻿@model IEnumerable<Domain.Models.Restaurant>
+
+@{
+    ViewData["Title"] = "Pending Restaurants (Site Admin)";
+}
+
+<h2>Pending Restaurants (Site Admin)</h2>
+
+@if (!Model.Any())
+{
+    <p>No pending restaurants.</p>
+}
+else
+{
+    <form asp-action="Approve" method="post">
+        <input type="hidden" name="itemType" value="restaurant" />
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="restaurantIds" value="@r.Id" />
+                        </td>
+                        <td>@r.Name</td>
+                        <td>@r.OwnerEmailAddress</td>
+                        <td>@r.Status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-success">Approve selected</button>
+    </form>
+}

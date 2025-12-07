@@ -1,0 +1,217 @@
+﻿@using System.Security.Claims
+@using Domain.Interfaces
+@using Domain.Models
+@model IEnumerable<IItemValidating>
+
+@{
+    var items = Model?.ToList() ?? new List<IItemValidating>();
+
+    string type = (string?)ViewBag.Type ?? "restaurants";
+    string mode = (string?)ViewBag.Mode ?? "view";
+    string viewMode = (string?)ViewBag.ViewMode ?? "card";
+
+    bool isApproveMode = string.Equals(mode, "approve", StringComparison.OrdinalIgnoreCase);
+
+    // Figure out if current user is the site admin
+    var isAdmin = false;
+    if (User.Identity?.IsAuthenticated ?? false)
+    {
+        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity.Name;
+        if (!string.IsNullOrEmpty(email) &&
+            string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
+        {
+            isAdmin = true;
+        }
+    }
+}
+
+<h2>Catalog - @type (@mode)</h2>
+
+<div class="mb-3">
+    <!-- VIEW buttons: visible to everyone -->
+    <a asp-action="Index"
+       asp-route-type="restaurants"
+       asp-route-view="card"
+       asp-route-mode="view"
+       class="btn btn-outline-primary btn-sm">
+        Restaurants (view)
+    </a>
+
+    <a asp-action="Index"
+       asp-route-type="menu"
+       asp-route-view="row"
+       asp-route-mode="view"
+       class="btn btn-outline-primary btn-sm">
+        Menu items (view)
+    </a>
+
+    @* APPROVE buttons: only visible to admin *@
+    @if (isAdmin)
+    {
+        <a asp-action="Index"
+           asp-route-type="restaurants"
+           asp-route-view="card"
+           asp-route-mode="approve"
+           class="btn btn-outline-warning btn-sm">
+            Restaurants (approve)
+        </a>
+
+        <a asp-action="Index"
+           asp-route-type="menu"
+           asp-route-view="row"
+           asp-route-mode="approve"
+           class="btn btn-outline-warning btn-sm">
+            Menu items (approve)
+        </a>
+    }
+</div>
+
+@if (!items.Any())
+{
+    <p>No items available.</p>
+}
+else
+{
+    if (isApproveMode)
+    {
+        <!-- APPROVE MODE: show table with checkboxes -->
+        <form asp-action="Approve" method="post">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" name="type" value="@type" />
+            <input type="hidden" name="view" value="@viewMode" />
+            <input type="hidden" name="mode" value="@mode" />
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        @if (type == "restaurants")
+                        {
+                            <th>Name</th>
+                            <th>Owner</th>
+                            <th>Status</th>
+                        }
+                        else if (type == "menu")
+                        {
+                            <th>Title</th>
+                            <th>Price</th>
+                            <th>Restaurant</th>
+                            <th>Status</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in items)
+                    {
+                        if (type == "restaurants" && item is Restaurant r)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="restaurantIds" value="@r.Id" />
+                                </td>
+                                <td>@r.Name</td>
+                                <td>@r.OwnerEmailAddress</td>
+                                <td>@r.Status</td>
+                            </tr>
+                        }
+                        else if (type == "menu" && item is MenuItem m)
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="menuItemIds" value="@m.Id" />
+                                </td>
+                                <td>@m.Title</td>
+                                <td>@m.Price</td>
+                                <td>@m.Restaurant?.Name</td>
+                                <td>@m.Status</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+
+            <button type="submit" class="btn btn-success">Approve selected</button>
+        </form>
+    }
+    else
+    {
+        <!-- VIEW MODE: use card / row partials -->
+        @if (viewMode == "card")
+        {
+            <div class="row row-cols-1 row-cols-md-3 g-3">
+                @foreach (var item in items)
+                {
+                    <div class="col">
+                        @if (item is Restaurant r)
+                        {
+                            @Html.Partial(r.GetCardPartial(), r)
+                        }
+                        else if (item is MenuItem m)
+                        {
+                            @Html.Partial(m.GetCardPartial(), m)
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Simple row view -->
+            <table class="table">
+                <thead>
+                    <tr>
+                        @if (type == "restaurants")
+                        {
+                            <th>Name</th>
+                            <th>Owner</th>
+                            @* Status header only for admin *@
+                            @if (isAdmin)
+                            {
+                                <th>Status</th>
+                            }
+                        }
+                        else if (type == "menu")
+                        {
+                            <th>Title</th>
+                            <th>Price</th>
+                            <th>Restaurant</th>
+                            @if (isAdmin)
+                            {
+                                <th>Status</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in items)
+                    {
+                        if (type == "restaurants" && item is Restaurant r2)
+                        {
+                            <tr>
+                                <td>@r2.Name</td>
+                                <td>@r2.OwnerEmailAddress</td>
+                                @if (isAdmin)
+                                {
+                                    <td>@r2.Status</td>
+                                }
+                            </tr>
+                        }
+                        else if (type == "menu" && item is MenuItem m2)
+                        {
+                            <tr>
+                                <td>@m2.Title</td>
+                                <td>@m2.Price</td>
+                                <td>@m2.Restaurant?.Name</td>
+                                @if (isAdmin)
+                                {
+                                    <td>@m2.Status</td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}

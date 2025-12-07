@@ -1,0 +1,71 @@
+﻿@using Domain.Interfaces
+@using Domain.Models
+@model IEnumerable<IItemValidating>
+
+@{
+    var items = Model?.ToList() ?? new List<IItemValidating>();
+    bool hasItems = items.Any();
+    ViewData["Title"] = "Bulk Import";
+}
+
+<h2>Bulk Import</h2>
+
+<form asp-action="BulkImport" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label class="form-label">JSON file</label>
+        <input type="file" name="jsonFile" class="form-control" accept=".json,application/json" />
+    </div>
+    <button type="submit" class="btn btn-primary">Upload &amp; Preview</button>
+</form>
+
+@if (hasItems)
+{
+    <hr />
+    <h3>Preview of imported items (not saved to DB yet)</h3>
+
+    <div class="mb-3">
+        <!-- Download default images ZIP -->
+        <form asp-action="DownloadZip" method="get" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary">
+                Download images ZIP
+            </button>
+        </form>
+    </div>
+
+    <ul>
+        @foreach (var item in items)
+        {
+            if (item is Restaurant r)
+            {
+                <li>
+                    <strong>Restaurant:</strong> @r.Name
+                    (<em>@r.OwnerEmailAddress</em>) – Status: @r.Status
+                </li>
+            }
+            else if (item is MenuItem m)
+            {
+                <li>
+                    <strong>Menu item:</strong> @m.Title – @m.Price
+                    @if (m.Restaurant != null)
+                    {
+                        <span>(Restaurant: @m.Restaurant.Name)</span>
+                    }
+                    – Status: @m.Status
+                </li>
+            }
+        }
+    </ul>
+
+    <hr />
+    <h3>Upload images ZIP &amp; commit to database</h3>
+
+    <form asp-action="Commit" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <div class="mb-3">
+            <label class="form-label">Images ZIP</label>
+            <input type="file" name="imagesZip" class="form-control" accept=".zip,application/zip" />
+        </div>
+        <button type="submit" class="btn btn-success">Upload images &amp; Commit</button>
+    </form>
+}
