@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Security.Claims;
+using System.Linq;
 using System.Threading.Tasks;
 using DataAccess.Factory;
 using Domain.Interfaces;
@@ -11,17 +11,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection; // for [FromKeyedServices]
+using Microsoft.Extensions.DependencyInjection;
 
 namespace RestaurantMVC.Controllers
 {
-    [Authorize]  // must be logged in
+    [Authorize]  // only logged-in users can use bulk import
     public class BulkImportController : Controller
     {
         private readonly ImportItemFactory _factory;
         private readonly IWebHostEnvironment _env;
-
-        private const string SiteAdminEmail = "siteadmin@example.com";
 
         public BulkImportController(ImportItemFactory factory, IWebHostEnvironment env)
         {
@@ -29,20 +27,11 @@ namespace RestaurantMVC.Controllers
             _env = env;
         }
 
-        private bool IsAdmin()
-        {
-            var email = User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name;
-            return !string.IsNullOrEmpty(email) &&
-                   string.Equals(email, SiteAdminEmail, StringComparison.OrdinalIgnoreCase);
-        }
-
         // GET: /BulkImport/BulkImport
         [HttpGet]
         public async Task<IActionResult> BulkImport(
             [FromKeyedServices("memory")] IItemsRepository itemsRepository)
         {
-            if (!IsAdmin()) return Forbid();
-
             var items = await itemsRepository.GetAsync();
             return View(items);
         }
@@ -54,8 +43,6 @@ namespace RestaurantMVC.Controllers
             IFormFile jsonFile,
             [FromKeyedServices("memory")] IItemsRepository itemsRepository)
         {
-            if (!IsAdmin()) return Forbid();
-
             if (jsonFile == null || jsonFile.Length == 0)
             {
                 ModelState.AddModelError(string.Empty, "Please upload a JSON file.");
@@ -84,8 +71,6 @@ namespace RestaurantMVC.Controllers
         public async Task<IActionResult> DownloadZip(
             [FromKeyedServices("memory")] IItemsRepository itemsRepository)
         {
-            if (!IsAdmin()) return Forbid();
-
             var items = await itemsRepository.GetAsync();
             if (items == null || items.Count == 0)
             {
@@ -104,7 +89,7 @@ namespace RestaurantMVC.Controllers
                 return Problem("Default image not found at /wwwroot/images/default.jpg");
             }
 
-            // one folder per item
+            // one folder per item (restaurant or menu item)
             foreach (var item in items)
             {
                 string externalId = item switch
@@ -141,8 +126,6 @@ namespace RestaurantMVC.Controllers
             [FromKeyedServices("memory")] IItemsRepository memoryRepository,
             [FromKeyedServices("db")] IItemsRepository dbRepository)
         {
-            if (!IsAdmin()) return Forbid();
-
             var items = await memoryRepository.GetAsync();
             if (items == null || items.Count == 0)
             {

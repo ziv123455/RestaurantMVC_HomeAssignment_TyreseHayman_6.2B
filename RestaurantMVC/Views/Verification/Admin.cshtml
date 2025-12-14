@@ -1,0 +1,78 @@
+﻿@using Domain.Models
+@model RestaurantMVC.Models.VerificationViewModel
+
+@{
+    ViewData["Title"] = "Verification";
+}
+
+<h2>Verification – Pending Items</h2>
+
+<hr />
+
+<h3>Pending Restaurants</h3>
+
+@if (!Model.PendingRestaurants.Any())
+{
+    <p>No restaurants pending approval.</p>
+}
+else
+{
+    <form asp-action="ApproveRestaurants" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="row">
+            @foreach (var r in Model.PendingRestaurants)
+            {
+                <div class="col-md-3 mb-3">
+                    <div class="form-check mb-1">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="selectedRestaurantIds"
+                               value="@r.Id" />
+                        <label class="form-check-label">Select</label>
+                    </div>
+
+                    @* Uses your existing partial that shows the image *@
+                    @await Html.PartialAsync("_RestaurantCard", r)
+                </div>
+            }
+        </div>
+
+        <button type="submit" class="btn btn-success">Approve selected restaurants</button>
+    </form>
+}
+
+<hr />
+
+<h3>Pending Menu Items</h3>
+
+@if (!Model.PendingMenuItems.Any())
+{
+    <p>No menu items pending approval.</p>
+}
+else
+{
+    <form asp-action="ApproveMenuItems" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="row">
+            @foreach (var m in Model.PendingMenuItems)
+            {
+                <div class="col-md-3 mb-3">
+                    <div class="form-check mb-1">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="selectedMenuIds"
+                               value="@m.Id" />
+                        <label class="form-check-label">Select</label>
+                    </div>
+
+                    @* Uses your existing partial that shows the image *@
+                    @await Html.PartialAsync("_MenuItemCard", m)
+                </div>
+            }
+        </div>
+
+        <button type="submit" class="btn btn-success">Approve selected menu items</button>
+    </form>
+}

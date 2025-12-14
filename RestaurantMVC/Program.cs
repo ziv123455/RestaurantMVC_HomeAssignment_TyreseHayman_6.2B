@@ -1,3 +1,4 @@
+using System; // for Exception
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RestaurantMVC.Data;
@@ -45,6 +46,28 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+
+// ------------ RUN MIGRATIONS ON STARTUP (prod uses your myASP DB) ------------
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    try
+    {
+        var identityDb = services.GetRequiredService<ApplicationDbContext>();
+        identityDb.Database.Migrate();
+
+        var restaurantDb = services.GetRequiredService<RestaurantDbContext>();
+        restaurantDb.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        // For class project, logging to console is fine
+        Console.WriteLine(ex.Message);
+    }
+}
+// -----------------------------------------------------------------------------
+
 
 if (app.Environment.IsDevelopment())
 {

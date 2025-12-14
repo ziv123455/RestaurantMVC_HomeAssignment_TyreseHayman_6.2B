@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Domain.Interfaces;
@@ -17,25 +16,19 @@ namespace DataAccess.Repositories
             _cache = cache;
         }
 
-        // Save items into memory (temporary)
+        public Task<IReadOnlyList<IItemValidating>> GetAsync()
+        {
+            var list = _cache.Get<List<IItemValidating>>(CacheKey) ?? new List<IItemValidating>();
+            return Task.FromResult<IReadOnlyList<IItemValidating>>(list);
+        }
+
         public Task SaveAsync(IEnumerable<IItemValidating> items)
         {
-            _cache.Set(CacheKey, items.ToList());
+            var list = items?.ToList() ?? new List<IItemValidating>();
+            _cache.Set(CacheKey, list);
             return Task.CompletedTask;
         }
 
-        // Get items from memory
-        public Task<IReadOnlyList<IItemValidating>> GetAsync()
-        {
-            if (_cache.TryGetValue(CacheKey, out List<IItemValidating> items))
-            {
-                return Task.FromResult<IReadOnlyList<IItemValidating>>(items);
-            }
-
-            return Task.FromResult<IReadOnlyList<IItemValidating>>(Array.Empty<IItemValidating>());
-        }
-
-        // Clear cached items
         public Task ClearAsync()
         {
             _cache.Remove(CacheKey);

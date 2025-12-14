@@ -1,34 +1,12 @@
-﻿@using System.Security.Claims
+﻿@* _RestaurantCard.cshtml *@
 @model Domain.Models.Restaurant
-
-@{
-    // is current user the site admin?
-    var isAdmin = false;
-    if (User.Identity?.IsAuthenticated ?? false)
-    {
-        var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity.Name;
-        if (!string.IsNullOrEmpty(email) &&
-            string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
-        {
-            isAdmin = true;
-        }
-    }
-}
 
 <div class="card p-2">
     @if (!string.IsNullOrEmpty(Model.ImagePath))
     {
-        <img src="@Model.ImagePath"
-             alt="@Model.Name"
-             class="img-fluid mb-2" />
+            <img src="@Model.ImagePath" class="card-img-top mb-2" alt="@Model.Name" />
     }
-
     <strong>@Model.Name</strong><br />
     Owner: @Model.OwnerEmailAddress<br />
-
-    @* Only admin sees status *@
-    @if (isAdmin)
-    {
-        <span>Status: @Model.Status</span>
-    }
+    Status: @Model.Status
 </div>

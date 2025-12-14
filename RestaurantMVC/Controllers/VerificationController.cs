@@ -4,91 +4,98 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using DataAccess;
-using DataAccess.Repositories;
 using Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using RestaurantMVC.Filters;
+using RestaurantMVC.Models;
 
 namespace RestaurantMVC.Controllers
 {
-    [Authorize]
+    [Authorize] // must be logged in
     public class VerificationController : Controller
     {
-        private readonly RestaurantDbContext _context;
-        private readonly ItemsDbRepository _dbRepository;
-
-        // Hard-coded site admin email (must match a registered user)
+        private readonly RestaurantDbContext _db;
         private const string SiteAdminEmail = "siteadmin@example.com";
 
-        public VerificationController(RestaurantDbContext context, ItemsDbRepository dbRepository)
+        public VerificationController(RestaurantDbContext db)
         {
-            _context = context;
-            _dbRepository = dbRepository;
+            _db = db;
         }
 
-        public async Task<IActionResult> Index(int? restaurantId)
+        private bool IsAdmin()
         {
-            var user = User;
-            var email = user.FindFirstValue(ClaimTypes.Email) ?? user.Identity?.Name;
+            var email = User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name;
+            return !string.IsNullOrEmpty(email) &&
+                   string.Equals(email, SiteAdminEmail, StringComparison.OrdinalIgnoreCase);
+        }
 
-            if (string.IsNullOrEmpty(email))
-            {
-                return Challenge(); // force login
-            }
+        // GET: /Verification/Admin
+        [HttpGet]
+        public async Task<IActionResult> Admin()
+        {
+            if (!IsAdmin())
+                return Forbid();
 
-            // SITE ADMIN VIEW – pending restaurants
-            if (email.Equals(SiteAdminEmail, StringComparison.OrdinalIgnoreCase))
+            var vm = new VerificationViewModel
             {
-                var pendingRestaurants = await _context.Restaurants
+                PendingRestaurants = await _db.Restaurants
                     .Where(r => r.Status == "Pending")
-                    .ToListAsync();
+                    .ToListAsync(),
 
-                return View("AdminRestaurants", pendingRestaurants);
-            }
-
-            // OWNER VIEW
-
-            if (!restaurantId.HasValue)
-            {
-                // Step 1: show owned restaurants
-                var myRestaurants = await _context.Restaurants
-                    .Where(r => r.OwnerEmailAddress == email)
-                    .ToListAsync();
-
-                return View("OwnerRestaurants", myRestaurants);
-            }
-            else
-            {
-                // Step 2: show pending menu items for selected restaurant
-                var pendingMenuItems = await _context.MenuItems
+                PendingMenuItems = await _db.MenuItems
                     .Include(m => m.Restaurant)
-                    .Where(m => m.RestaurantId == restaurantId.Value && m.Status == "Pending")
-                    .ToListAsync();
+                    .Where(m => m.Status == "Pending")
+                    .ToListAsync()
+            };
 
-                ViewBag.RestaurantId = restaurantId.Value;
-
-                return View("OwnerMenuItems", pendingMenuItems);
-            }
+            return View(vm);
         }
 
+        // POST: approve selected restaurants
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [ApproveAuthorizationFilter]  // our custom filter
-        public async Task<IActionResult> Approve(
-            string itemType,
-            List<int>? restaurantIds,
-            List<Guid>? menuItemIds)
+        public async Task<IActionResult> ApproveRestaurants(List<int> selectedRestaurantIds)
         {
-            restaurantIds ??= new List<int>();
-            menuItemIds ??= new List<Guid>();
+            if (!IsAdmin())
+                return Forbid();
 
-            await _dbRepository.ApproveAsync(
-                itemType == "restaurant" ? restaurantIds : new List<int>(),
-                itemType == "menuItem" ? menuItemIds : new List<Guid>());
+            if (selectedRestaurantIds != null && selectedRestaurantIds.Count > 0)
+            {
+                var restaurants = await _db.Restaurants
+                    .Where(r => selectedRestaurantIds.Contains(r.Id))
+                    .ToListAsync();
 
-            return RedirectToAction("Index");
+                foreach (var r in restaurants)
+                    r.Status = "Approved";
+
+                await _db.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Admin));
+        }
+
+        // POST: approve selected menu items
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveMenuItems(List<Guid> selectedMenuIds)
+        {
+            if (!IsAdmin())
+                return Forbid();
+
+            if (selectedMenuIds != null && selectedMenuIds.Count > 0)
+            {
+                var menuItems = await _db.MenuItems
+                    .Where(m => selectedMenuIds.Contains(m.Id))
+                    .ToListAsync();
+
+                foreach (var m in menuItems)
+                    m.Status = "Approved";
+
+                await _db.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Admin));
         }
     }
 }

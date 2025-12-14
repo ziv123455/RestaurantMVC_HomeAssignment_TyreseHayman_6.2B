@@ -1,4 +1,6 @@
 ﻿@using System.Security.Claims
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
 
 <!DOCTYPE html>
 <html lang="en">
@@ -23,20 +25,24 @@
                    asp-route-mode="view">
                     RestaurantMVC
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     @{
-                        var isLoggedIn = User.Identity?.IsAuthenticated ?? false;
+                        var isLoggedIn = SignInManager.IsSignedIn(User);
                         var isAdmin = false;
 
                         if (isLoggedIn)
                         {
-                            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity.Name;
+                            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity!.Name;
+
                             if (!string.IsNullOrEmpty(email) &&
-                            string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
+                                string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
                             {
                                 isAdmin = true;
                             }
@@ -44,7 +50,7 @@
                     }
 
                     <ul class="navbar-nav flex-grow-1">
-                        <!-- Catalog: visible to everyone (anonymous + logged in) -->
+                        <!-- Everyone: Catalog -->
                         <li class="nav-item">
                             <a class="nav-link text-dark"
                                asp-area=""
@@ -57,43 +63,50 @@
                             </a>
                         </li>
 
-                        @* Logged-in users: Check Request only *@
-                        @if (isLoggedIn)
+                        @* Logged-in non-admin users: Check Request *@
+                        @if (isLoggedIn && !isAdmin)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                   asp-area=""
-                                   asp-controller="Requests"
-                                   asp-action="Index">
-                                    Check Request
-                                </a>
-                            </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark"
+                                       asp-area=""
+                                       asp-controller="Requests"
+                                       asp-action="Index">
+                                        Check Request
+                                    </a>
+                                </li>
                         }
 
-                        @* Admin-only: Bulk Import + Verification *@
+                        @* Admin: Check Request + Bulk Import + Verification *@
                         @if (isAdmin)
                         {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                   asp-area=""
-                                   asp-controller="BulkImport"
-                                   asp-action="BulkImport">
-                                    Bulk Import
-                                </a>
-                            </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark"
+                                       asp-area=""
+                                       asp-controller="Requests"
+                                       asp-action="Index">
+                                        Check Request
+                                    </a>
+                                </li>
 
-                            <li class="nav-item">
-                                <a class="nav-link text-dark"
-                                   asp-area=""
-                                   asp-controller="Catalog"
-                                   asp-action="Index"
-                                   asp-route-type="restaurants"
-                                   asp-route-view="card"
-                                   asp-route-mode="approve">
-                                    Verification
-                                </a>
-                            </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark"
+                                       asp-area=""
+                                       asp-controller="BulkImport"
+                                       asp-action="BulkImport">
+                                        Bulk Import
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark"
+                                       asp-area=""
+                                       asp-controller="Verification"
+                                       asp-action="Admin">
+                                        Verification
+                                    </a>
+                                </li>
                         }
+
                     </ul>
 
                     <partial name="_LoginPartial" />
@@ -101,6 +114,7 @@
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
@@ -112,6 +126,7 @@
             &copy; 2025 - RestaurantMVC
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
