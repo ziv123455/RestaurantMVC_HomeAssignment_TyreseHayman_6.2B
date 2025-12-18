@@ -1,72 +1,54 @@
-﻿@using Domain.Models
-@model RestaurantMVC.Models.VerificationViewModel
+﻿@model IEnumerable<Domain.Models.MenuItem>
 
-<h2>Verification</h2>
+@{
+    ViewData["Title"] = "Verify Menu Items";
+    var hasItems = Model != null && Model.Any();
+}
 
-@if (!Model.PendingRestaurants.Any() && !Model.PendingMenuItems.Any())
+<h2>Verify Menu Items</h2>
+
+@if (!hasItems)
 {
-    <p>No pending items to approve.</p>
+    <p>No pending menu items.</p>
 }
 else
 {
-    <form asp-action="Approve" method="post">
+    <form asp-action="ApproveMenuItems" method="post">
         @Html.AntiForgeryToken()
 
-        <h3>Pending Restaurants</h3>
-
-        @if (!Model.PendingRestaurants.Any())
-        {
-            <p class="text-muted">No pending restaurants.</p>
-        }
-        else
-        {
-            <div class="row mb-4">
-                @foreach (var r in Model.PendingRestaurants)
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Image</th>
+                    <th>Title</th>
+                    <th>Price</th>
+                    <th>Restaurant</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in Model)
                 {
-                    <div class="col-md-3 mb-3">
-                        <div class="form-check mb-1">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   name="selectedRestaurantIds"
-                                   value="@r.Id" />
-                            <label class="form-check-label">Select</label>
-                        </div>
-
-                        @* reuse your card partial so images etc show *@
-                        @await Html.PartialAsync("_RestaurantCard", r)
-                    </div>
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="selectedMenuItemIds" value="@m.Id" />
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(m.ImagePath))
+                            {
+                                <img src="@m.ImagePath" alt="@m.Title" style="max-height:80px;" />
+                            }
+                        </td>
+                        <td>@m.Title</td>
+                        <td>@m.Price</td>
+                        <td>@m.Restaurant?.Name</td>
+                        <td>@m.Status</td>
+                    </tr>
                 }
-            </div>
-        }
+            </tbody>
+        </table>
 
-        <h3>Pending Menu Items</h3>
-
-        @if (!Model.PendingMenuItems.Any())
-        {
-            <p class="text-muted">No pending menu items.</p>
-        }
-        else
-        {
-            <div class="row mb-4">
-                @foreach (var m in Model.PendingMenuItems)
-                {
-                    <div class="col-md-3 mb-3">
-                        <div class="form-check mb-1">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   name="selectedMenuItemIds"
-                                   value="@m.Id" />
-                            <label class="form-check-label">Select</label>
-                        </div>
-
-                        @await Html.PartialAsync("_MenuItemCard", m)
-                    </div>
-                }
-            </div>
-        }
-
-        <button type="submit" class="btn btn-success">
-            Approve selected
-        </button>
+        <button type="submit" class="btn btn-success">Approve selected menu items</button>
     </form>
 }

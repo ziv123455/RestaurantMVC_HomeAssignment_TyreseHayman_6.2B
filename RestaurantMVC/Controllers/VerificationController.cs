@@ -8,94 +8,116 @@ using Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using RestaurantMVC.Models;
 
 namespace RestaurantMVC.Controllers
 {
-    [Authorize] // must be logged in
+    [Authorize]
     public class VerificationController : Controller
     {
-        private readonly RestaurantDbContext _db;
+        private readonly RestaurantDbContext _context;
         private const string SiteAdminEmail = "siteadmin@example.com";
 
-        public VerificationController(RestaurantDbContext db)
+        public VerificationController(RestaurantDbContext context)
         {
-            _db = db;
+            _context = context;
         }
 
-        private bool IsAdmin()
-        {
-            var email = User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name;
-            return !string.IsNullOrEmpty(email) &&
-                   string.Equals(email, SiteAdminEmail, StringComparison.OrdinalIgnoreCase);
-        }
+        private string? CurrentEmail =>
+            User.FindFirstValue(ClaimTypes.Email) ?? User.Identity?.Name;
+
+        private bool IsAdmin =>
+            !string.IsNullOrEmpty(CurrentEmail) &&
+            string.Equals(CurrentEmail, SiteAdminEmail, StringComparison.OrdinalIgnoreCase);
+
+        // --------------------------------------------------------------------
+        // ADMIN: verify RESTAURANTS
+        // --------------------------------------------------------------------
 
         // GET: /Verification/Admin
         [HttpGet]
         public async Task<IActionResult> Admin()
         {
-            if (!IsAdmin())
+            if (!IsAdmin)
                 return Forbid();
 
-            var vm = new VerificationViewModel
-            {
-                PendingRestaurants = await _db.Restaurants
-                    .Where(r => r.Status == "Pending")
-                    .ToListAsync(),
+            var restaurants = await _context.Restaurants
+                .Where(r => r.Status == "Pending")
+                .ToListAsync();
 
-                PendingMenuItems = await _db.MenuItems
-                    .Include(m => m.Restaurant)
-                    .Where(m => m.Status == "Pending")
-                    .ToListAsync()
-            };
-
-            return View(vm);
+            return View(restaurants); // uses Views/Verification/Admin.cshtml
         }
 
-        // POST: approve selected restaurants
+        // POST: /Verification/ApproveRestaurants
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveRestaurants(List<int> selectedRestaurantIds)
         {
-            if (!IsAdmin())
+            if (!IsAdmin)
                 return Forbid();
 
-            if (selectedRestaurantIds != null && selectedRestaurantIds.Count > 0)
+            if (selectedRestaurantIds == null || selectedRestaurantIds.Count == 0)
+                return RedirectToAction(nameof(Admin));
+
+            var toApprove = await _context.Restaurants
+                .Where(r => selectedRestaurantIds.Contains(r.Id))
+                .ToListAsync();
+
+            foreach (var r in toApprove)
             {
-                var restaurants = await _db.Restaurants
-                    .Where(r => selectedRestaurantIds.Contains(r.Id))
-                    .ToListAsync();
-
-                foreach (var r in restaurants)
-                    r.Status = "Approved";
-
-                await _db.SaveChangesAsync();
+                r.Status = "Approved";
             }
 
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Admin));
         }
 
-        // POST: approve selected menu items
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ApproveMenuItems(List<Guid> selectedMenuIds)
+        // --------------------------------------------------------------------
+        // RESTAURANT OWNERS: verify OWN MENU ITEMS
+        // --------------------------------------------------------------------
+
+        // GET: /Verification (Index)
+        [HttpGet]
+        public async Task<IActionResult> Index()
         {
-            if (!IsAdmin())
+            if (IsAdmin || string.IsNullOrEmpty(CurrentEmail))
                 return Forbid();
 
-            if (selectedMenuIds != null && selectedMenuIds.Count > 0)
+            var items = await _context.MenuItems
+                .Include(m => m.Restaurant)
+                .Where(m => m.Status == "Pending"
+                            && m.Restaurant != null
+                            && m.Restaurant.Status == "Approved"
+                            && m.Restaurant.OwnerEmailAddress == CurrentEmail)
+                .ToListAsync();
+
+            return View(items); // uses Views/Verification/Index.cshtml
+        }
+
+        // POST: /Verification/ApproveMenuItems
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveMenuItems(List<Guid> selectedMenuItemIds)
+        {
+            if (IsAdmin || string.IsNullOrEmpty(CurrentEmail))
+                return Forbid();
+
+            if (selectedMenuItemIds == null || selectedMenuItemIds.Count == 0)
+                return RedirectToAction(nameof(Index));
+
+            var items = await _context.MenuItems
+                .Include(m => m.Restaurant)
+                .Where(m => selectedMenuItemIds.Contains(m.Id)
+                            && m.Restaurant != null
+                            && m.Restaurant.OwnerEmailAddress == CurrentEmail)
+                .ToListAsync();
+
+            foreach (var m in items)
             {
-                var menuItems = await _db.MenuItems
-                    .Where(m => selectedMenuIds.Contains(m.Id))
-                    .ToListAsync();
-
-                foreach (var m in menuItems)
-                    m.Status = "Approved";
-
-                await _db.SaveChangesAsync();
+                m.Status = "Approved";
             }
 
-            return RedirectToAction(nameof(Admin));
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
     }
 }

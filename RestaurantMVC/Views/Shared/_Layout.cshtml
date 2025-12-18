@@ -35,22 +35,22 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     @{
                         var isLoggedIn = SignInManager.IsSignedIn(User);
-                        var isAdmin = false;
 
+                        string? currentEmail = null;
                         if (isLoggedIn)
                         {
-                            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity!.Name;
-
-                            if (!string.IsNullOrEmpty(email) &&
-                                string.Equals(email, "siteadmin@example.com", StringComparison.OrdinalIgnoreCase))
-                            {
-                                isAdmin = true;
-                            }
+                            currentEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? User.Identity!.Name;
                         }
+
+                        var isAdmin = isLoggedIn &&
+                        !string.IsNullOrEmpty(currentEmail) &&
+                        string.Equals(currentEmail,
+                        "siteadmin@example.com",
+                        StringComparison.OrdinalIgnoreCase);
                     }
 
                     <ul class="navbar-nav flex-grow-1">
-                        <!-- Everyone: Catalog -->
+                        <!-- Catalog: visible to EVERYONE -->
                         <li class="nav-item">
                             <a class="nav-link text-dark"
                                asp-area=""
@@ -63,50 +63,52 @@
                             </a>
                         </li>
 
-                        @* Logged-in non-admin users: Check Request *@
-                        @if (isLoggedIn && !isAdmin)
+                        @* LOGGED-IN USERS (admin + owners): Check Request + Bulk Import *@
+                        @if (isLoggedIn)
                         {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark"
-                                       asp-area=""
-                                       asp-controller="Requests"
-                                       asp-action="Index">
-                                        Check Request
-                                    </a>
-                                </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Requests"
+                                   asp-action="Index">
+                                    Check Request
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="BulkImport"
+                                   asp-action="BulkImport">
+                                    Bulk Import
+                                </a>
+                            </li>
                         }
 
-                        @* Admin: Check Request + Bulk Import + Verification *@
+                        @* ADMIN: verify RESTAURANTS only *@
                         @if (isAdmin)
                         {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark"
-                                       asp-area=""
-                                       asp-controller="Requests"
-                                       asp-action="Index">
-                                        Check Request
-                                    </a>
-                                </li>
-
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark"
-                                       asp-area=""
-                                       asp-controller="BulkImport"
-                                       asp-action="BulkImport">
-                                        Bulk Import
-                                    </a>
-                                </li>
-
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark"
-                                       asp-area=""
-                                       asp-controller="Verification"
-                                       asp-action="Admin">
-                                        Verification
-                                    </a>
-                                </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Verification"
+                                   asp-action="Admin">
+                                    Verify Restaurants
+                                </a>
+                            </li>
                         }
-
+                        @* RESTAURANT OWNERS (logged-in, NOT admin): verify MENU ITEMS only *@
+                        else if (isLoggedIn)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Verification"
+                                   asp-action="Index">
+                                    Verify Menu Items
+                                </a>
+                            </li>
+                        }
                     </ul>
 
                     <partial name="_LoginPartial" />
